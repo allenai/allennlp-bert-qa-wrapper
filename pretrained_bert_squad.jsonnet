@@ -6,12 +6,15 @@
   },
   // Some small data files in the right format just to have AllenNLP produce a model archive after "training".
   // Training will not change the weights.
-  "train_data_path": "/Users/pradeepd/data/squad2.0/sample-v2.0.json",
-  "validation_data_path": "/Users/pradeepd/data/squad2.0/sample-v2.0.json",
+  "train_data_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/sample_data/sample-v2.0.json",
+  "validation_data_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/sample_data/sample-v2.0.json",
   "model": {
     "type": "bert_for_qa",
     // Path to a tarball containing bert_config.json and pytorch_model.bin that are outputs from HuggingFace code
-    "pretrained_archive_path": "/Users/pradeepd/workspace/squad_bert/squad2_bert_large/bert_large_archive.tar.gz",
+    // for BERT base
+    // "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-base/bert_base_archive.tar.gz",
+    // for BERT large
+    "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-large/bert_large_archive.tar.gz",
     // BERT base threshold
     //"null_score_difference_threshold": -1.75 
     // BERT large threshold
