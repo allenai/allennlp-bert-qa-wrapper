@@ -134,12 +134,12 @@ spec:
           # See https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes
           livenessProbe:
             failureThreshold: 6
-            periodSeconds: 10
+            periodSeconds: 50
             httpGet:
               path: /
               port: $HTTP_PORT
               scheme: HTTP
-            initialDelaySeconds: 1
+            initialDelaySeconds: 60
           resources:
             requests:
               cpu: "1"

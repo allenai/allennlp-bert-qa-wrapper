@@ -13,6 +13,6 @@ Then you can run the image.  The cache directory is mounted so you can re-use th
 multiple Docker commands.
 
 ```
-mkdir -p /$HOME/.allennlp/
-docker run -p 8000:8000 -v /$HOME/.allennlp:/root/.allennlp allennlp-bert-qa
+mkdir -p $HOME/.allennlp/
+docker run -p 8000:8000 -v $HOME/.allennlp:/root/.allennlp allennlp-bert-qa
 ```
