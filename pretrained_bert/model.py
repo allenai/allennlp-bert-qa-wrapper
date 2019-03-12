@@ -6,6 +6,7 @@ import math
 import torch
 from overrides import overrides
 from pytorch_pretrained_bert import BertForQuestionAnswering as HuggingFaceBertQA
+from pytorch_pretrained_bert import BertConfig
 from pytorch_pretrained_bert.tokenization import BasicTokenizer
 
 from allennlp.common import JsonDict
@@ -16,16 +17,63 @@ from allennlp.data.vocabulary import Vocabulary
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
+BERT_LARGE_CONFIG = {"attention_probs_dropout_prob": 0.1,
+                     "hidden_act": "gelu",
+                     "hidden_dropout_prob": 0.1,
+                     "hidden_size": 1024,
+                     "initializer_range": 0.02,
+                     "intermediate_size": 4096,
+                     "max_position_embeddings": 512,
+                     "num_attention_heads": 16,
+                     "num_hidden_layers": 24,
+                     "type_vocab_size": 2,
+                     "vocab_size": 30522
+                    }
+
+BERT_BASE_CONFIG = {"attention_probs_dropout_prob": 0.1,
+                    "hidden_act": "gelu",
+                    "hidden_dropout_prob": 0.1,
+                    "hidden_size": 768,
+                    "initializer_range": 0.02,
+                    "intermediate_size": 3072,
+                    "max_position_embeddings": 512,
+                    "num_attention_heads": 12,
+                    "num_hidden_layers": 12,
+                    "type_vocab_size": 2,
+                    "vocab_size": 30522
+                   }
+
+
 @Model.register('bert_for_qa')
 class BertForQuestionAnswering(Model):
     def __init__(self,
                  vocab: Vocabulary,
+                 bert_model_type: str,
                  pretrained_archive_path: str,
                  null_score_difference_threshold: float,
                  n_best_size: int = 20,
                  max_answer_length: int = 30) -> None:
         super().__init__(vocab)
-        self.bert_qa_model = HuggingFaceBertQA.from_pretrained(pretrained_archive_path)
+        if bert_model_type == "bert_base":
+            config_to_use = BERT_BASE_CONFIG
+        elif bert_model_type == "bert_large":
+            config_to_use = BERT_LARGE_CONFIG
+        else:
+            raise RuntimeError(f"`bert_model_type` should either be \"bert_large\" or \"bert_base\"")
+        config = BertConfig(vocab_size_or_config_json_file=config_to_use["vocab_size"],
+                            hidden_size=config_to_use["hidden_size"],
+                            num_hidden_layers=config_to_use["num_hidden_layers"],
+                            num_attention_heads=config_to_use["num_attention_heads"],
+                            intermediate_size=config_to_use["intermediate_size"],
+                            hidden_act=config_to_use["hidden_act"],
+                            hidden_dropout_prob=config_to_use["hidden_dropout_prob"],
+                            attention_probs_dropout_prob=config_to_use["attention_probs_dropout_prob"],
+                            max_position_embeddings=config_to_use["max_position_embeddings"],
+                            type_vocab_size=config_to_use["type_vocab_size"],
+                            initializer_range=config_to_use["initializer_range"])
+        self.bert_qa_model = HuggingFaceBertQA(config)
+        self._loaded_qa_weights = False
+        self._pretrained_archive_path = pretrained_archive_path
         self._null_score_difference_threshold = null_score_difference_threshold
         self._n_best_size = n_best_size
         self._max_answer_length = max_answer_length
@@ -40,6 +88,9 @@ class BertForQuestionAnswering(Model):
                 token_to_original_map: Dict[int, int],
                 token_is_max_context: Dict[int, bool]) -> Dict[str, torch.Tensor]:
         # pylint: disable=arguments-differ
+        if not self._loaded_qa_weights and self.training:
+            self.bert_qa_model = HuggingFaceBertQA.from_pretrained(self._pretrained_archive_path)
+            self._loaded_qa_weights = True
         start_logits, end_logits = self.bert_qa_model(torch.stack(input_ids),
                                                       torch.stack(token_type_ids),
                                                       torch.stack(attention_mask))
