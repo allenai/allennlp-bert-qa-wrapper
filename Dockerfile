@@ -1,4 +1,4 @@
-FROM allennlp/allennlp:v0.8.1
+FROM allennlp/allennlp:v0.8.2
 
 WORKDIR /local
 COPY pretrained_bert/ /local/pretrained_bert/
