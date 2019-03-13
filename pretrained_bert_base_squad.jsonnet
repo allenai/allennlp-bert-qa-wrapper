@@ -16,10 +16,10 @@
     "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-base/bert_base_archive.tar.gz",
     // for BERT large
     // "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-large/bert_large_archive.tar.gz",
-    // BERT base threshold
-    "null_score_difference_threshold": -1.75 
-    // BERT large threshold
-    // "null_score_difference_threshold": -1.98477 
+    // BERT base threshold; dev tuned number of -1.7497849464416504
+    "null_score_difference_threshold": 0.0 
+    // BERT large threshold, dev tuned number is -1.9847722053527832
+    // "null_score_difference_threshold": 0.0 
   },
   "iterator": {
     "type": "basic",
