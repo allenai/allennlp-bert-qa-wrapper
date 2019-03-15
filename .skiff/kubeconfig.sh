@@ -108,7 +108,7 @@ metadata:
   name: $FULLY_QUALIFIED_APP_NAME
   namespace: $APP_NAME
 spec:
-  replicas: 2
+  replicas: 3
   template:
     metadata:
       labels:
