@@ -11,15 +11,12 @@
   "model": {
     "type": "bert_for_qa",
     "bert_model_type": "bert_base",
+    "model_is_for_squad1": true,
     // Path to a tarball containing bert_config.json and pytorch_model.bin that are outputs from HuggingFace code
     // for BERT base
-    "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-base/bert_base_archive.tar.gz",
+    "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-base/squad1.1/bert_base_archive.tar.gz",
     // for BERT large
     // "pretrained_archive_path": "https://s3-us-west-2.amazonaws.com/pradeepd-bert-qa-models/bert-large/bert_large_archive.tar.gz",
-    // BERT base threshold
-    "null_score_difference_threshold": -1.75 
-    // BERT large threshold
-    // "null_score_difference_threshold": -1.98477 
   },
   "iterator": {
     "type": "basic",
