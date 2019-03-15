@@ -165,7 +165,7 @@ class BertForQuestionAnswering(Model):
                                     end_index=end_index,
                                     start_logit=start_logits[start_index],
                                     end_logit=end_logits[end_index]))
-            if self._model_is_for_squad1:
+            if not self._model_is_for_squad1:
                 prelim_predictions.append(
                         _PrelimPrediction(
                                 start_index=0,
