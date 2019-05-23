@@ -50,7 +50,8 @@ class BertForQuestionAnswering(Model):
                  vocab: Vocabulary,
                  bert_model_type: str,
                  pretrained_archive_path: str,
-                 null_score_difference_threshold: float,
+                 null_score_difference_threshold: float = 0.0,
+                 model_is_for_squad1: bool = False,
                  n_best_size: int = 20,
                  max_answer_length: int = 30) -> None:
         super().__init__(vocab)
@@ -75,6 +76,7 @@ class BertForQuestionAnswering(Model):
         self._loaded_qa_weights = False
         self._pretrained_archive_path = pretrained_archive_path
         self._null_score_difference_threshold = null_score_difference_threshold
+        self._model_is_for_squad1 = model_is_for_squad1
         self._n_best_size = n_best_size
         self._max_answer_length = max_answer_length
 
@@ -131,11 +133,12 @@ class BertForQuestionAnswering(Model):
             null_end_logit = 0  # the end logit at the slice with min null score
             start_indexes = self._get_best_indexes(start_logits, self._n_best_size)
             end_indexes = self._get_best_indexes(end_logits, self._n_best_size)
-            feature_null_score = start_logits[0] + end_logits[0]
-            if feature_null_score < score_null:
-                score_null = feature_null_score
-                null_start_logit = start_logits[0]
-                null_end_logit = end_logits[0]
+            if not self._model_is_for_squad1:
+                feature_null_score = start_logits[0] + end_logits[0]
+                if feature_null_score < score_null:
+                    score_null = feature_null_score
+                    null_start_logit = start_logits[0]
+                    null_end_logit = end_logits[0]
             for start_index in start_indexes:
                 for end_index in end_indexes:
                     # We could hypothetically create invalid predictions, e.g., predict
@@ -162,12 +165,13 @@ class BertForQuestionAnswering(Model):
                                     end_index=end_index,
                                     start_logit=start_logits[start_index],
                                     end_logit=end_logits[end_index]))
-            prelim_predictions.append(
-                    _PrelimPrediction(
-                            start_index=0,
-                            end_index=0,
-                            start_logit=null_start_logit,
-                            end_logit=null_end_logit))
+            if not self._model_is_for_squad1:
+                prelim_predictions.append(
+                        _PrelimPrediction(
+                                start_index=0,
+                                end_index=0,
+                                start_logit=null_start_logit,
+                                end_logit=null_end_logit))
             prelim_predictions = sorted(
                     prelim_predictions,
                     key=lambda x: (x.start_logit + x.end_logit),
@@ -214,17 +218,18 @@ class BertForQuestionAnswering(Model):
                                 start_logit=pred.start_logit,
                                 end_logit=pred.end_logit))
             # if we didn't include the empty option in the n-best, include it
-            if "" not in seen_predictions:
-                nbest.append(
-                        _NbestPrediction(
-                                text="!!NO ANSWER!!",
-                                start_logit=null_start_logit,
-                                end_logit=null_end_logit))
-                # In very rare edge cases we could only have single null prediction.
-                # So we just create a nonce prediction in this case to avoid failure.
-                if len(nbest) == 1:
-                    nbest.insert(0,
-                                 _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
+            if not self._model_is_for_squad1:
+                if "" not in seen_predictions:
+                    nbest.append(
+                            _NbestPrediction(
+                                    text="!!NO ANSWER!!",
+                                    start_logit=null_start_logit,
+                                    end_logit=null_end_logit))
+                    # In very rare edge cases we could only have single null prediction.
+                    # So we just create a nonce prediction in this case to avoid failure.
+                    if len(nbest) == 1:
+                        nbest.insert(0,
+                                     _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
             # In very rare edge cases we could have no valid predictions. So we
             # just create a nonce prediction in this case to avoid failure.
             if not nbest:
@@ -254,13 +259,17 @@ class BertForQuestionAnswering(Model):
 
             assert len(nbest_json) >= 1
 
-            # predict "" iff the null score - the score of best non-null > threshold
-            score_diff = score_null - best_non_null_entry.start_logit - (
-                    best_non_null_entry.end_logit)
-            if score_diff > self._null_score_difference_threshold:
-                predictions.append("!!NO ANSWER!!")
+            if self._model_is_for_squad1:
+                predictions.append(nbest_json[0]["text"])
             else:
-                predictions.append(best_non_null_entry.text)
+                # predict "" iff the null score - the score of best non-null > threshold
+                score_diff = score_null - best_non_null_entry.start_logit - (
+                        best_non_null_entry.end_logit)
+                if score_diff > self._null_score_difference_threshold:
+                    predictions.append("!!NO ANSWER!!")
+                else:
+                    predictions.append(best_non_null_entry.text)
+
             nbest_info.append(nbest_json)
         output_dict["predictions"] = predictions
         output_dict["nbest_info"] = nbest_info
