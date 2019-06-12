@@ -60,7 +60,7 @@ local hosts = [
 
 local replicas = (
     if env == 'prod' then
-        2
+        3
     else
         1
 );
@@ -136,9 +136,9 @@ local ingress = {
 // When an application is not ready traffic will instead go to other ready pods.
 // A live pod can also become unready again if the probe fails `failureThreshold` times.
 local readinessProbe = {
-    failureThreshold: 3,
-    periodSeconds: 10,
-    initialDelaySeconds: 30,  // Use a longer delay if your app loads a large model.
+    failureThreshold: 6,
+    periodSeconds: 50,
+    initialDelaySeconds: 60,  // Use a longer delay if your app loads a large model.
     httpGet: {
         path: '/health?check=readiness',
         port: config.httpPort,
@@ -150,9 +150,9 @@ local readinessProbe = {
 // If the `livenessProbe` fails `failureThreshold` times, the pod is killed and restarted by
 // Kubernetes.
 local livenessProbe = {
-    failureThreshold: 3,
-    periodSeconds: 10,
-    initialDelaySeconds: 30,  // Use a longer delay if your app loads a large model.
+    failureThreshold: 6,
+    periodSeconds: 50,
+    initialDelaySeconds: 60,  // Use a longer delay if your app loads a large model.
     httpGet: {
         path: '/health?check=liveness',
         port: config.httpPort,
@@ -182,18 +182,12 @@ local deployment = {
                     {
                         name: config.appName,
                         image: image,
-                        args: [ 'server/start.py', '--prod' ],
                         readinessProbe: readinessProbe,
                         livenessProbe: livenessProbe,
                         resources: {
                             requests: {
-                                // Our machines currently have 2 vCPUs, so this
-                                // will allow 4 apps to run per machine
                                 cpu: '0.5',
-                                // Each machine has 13 GB of RAM. We target 4
-                                // apps per machine, so we reserve 3 GB of RAM
-                                // for each (whether they use it our not).
-                                memory: '3Gi'
+                                memory: '1Gi'
                             }
                         },
                         env: [
