@@ -3,7 +3,6 @@
 # and updates the target cluster (specified via the $_CLUSTER envrionment
 # variable).
 #
-
 steps:
 # Pull the current latest image, so we can use its cached layers.
 - id: 'pull'
@@ -32,27 +31,28 @@ steps:
   ]
 # Generate our Kubernetes configuration
 - id: 'config'
-  name: 'bash:3.2.57'
+  name: 'gcr.io/ai2-reviz/jsonnet'
   args: [
-    '.skiff/kubeconfig.sh',
-    '$_ENV',
-    'gcr.io/$PROJECT_ID/$REPO_NAME:$COMMIT_SHA'
+    'eval',
+    '-y',
+    '--output-file', './webapp.json',
+    '--ext-str', 'env=$_ENV',
+    '--ext-str', 'image=gcr.io/$PROJECT_ID/$REPO_NAME:$COMMIT_SHA',
+    '--ext-str', 'sha=$COMMIT_SHA',
+    './webapp.jsonnet'
   ]
-  env: [
-    'REPO_NAME=$REPO_NAME',
-  ]
+  dir: '.skiff'
 # Deploy the image to Kubernetes
 - id: 'deploy'
-  name: 'gcr.io/cloud-builders/kubectl'
+  name: 'gcr.io/ai2-reviz/rudder'
   args: [
-    'apply',
+    'deploy',
     '-f',
-    'kubeconfig.yaml'
+    'webapp.json',
+    '-c',
+    'skiff-prod'
   ]
-  env: [
-    'CLOUDSDK_COMPUTE_ZONE=us-west1',
-    'CLOUDSDK_CONTAINER_CLUSTER=skiff-prod'
-  ]
+  dir: '.skiff'
 substitutions:
   _ENV: staging
 images: [
@@ -61,5 +61,5 @@ images: [
 ]
 artifacts:
   objects:
-    location: 'gs://skiff-archive/$REPO_NAME/$_ENV/$COMMIT_SHA'
-    paths: ['kubeconfig.yaml']
+    location: 'gs://skiff-archive/$REPO_NAME/$_ENV/$BUILD_ID/$COMMIT_SHA'
+    paths: ['.skiff/webapp.json']
