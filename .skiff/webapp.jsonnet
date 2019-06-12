@@ -137,24 +137,10 @@ local ingress = {
 // A live pod can also become unready again if the probe fails `failureThreshold` times.
 local readinessProbe = {
     failureThreshold: 6,
-    periodSeconds: 50,
-    initialDelaySeconds: 60,  // Use a longer delay if your app loads a large model.
+    periodSeconds: 10,
+    initialDelaySeconds: 1,  // Use a longer delay if your app loads a large model.
     httpGet: {
-        path: '/health?check=readiness',
-        port: config.httpPort,
-        scheme: 'HTTP',
-    },
-};
-
-// The `livenessProbe` begins on application start and determines whether to kill the pod.
-// If the `livenessProbe` fails `failureThreshold` times, the pod is killed and restarted by
-// Kubernetes.
-local livenessProbe = {
-    failureThreshold: 6,
-    periodSeconds: 50,
-    initialDelaySeconds: 60,  // Use a longer delay if your app loads a large model.
-    httpGet: {
-        path: '/health?check=liveness',
+        path: '/?check=readiness',
         port: config.httpPort,
         scheme: 'HTTP',
     },
@@ -183,7 +169,6 @@ local deployment = {
                         name: config.appName,
                         image: image,
                         readinessProbe: readinessProbe,
-                        livenessProbe: livenessProbe,
                         resources: {
                             requests: {
                                 cpu: '0.5',
