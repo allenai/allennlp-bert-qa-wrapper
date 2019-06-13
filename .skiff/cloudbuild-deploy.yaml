@@ -48,9 +48,7 @@ steps:
   args: [
     'deploy',
     '-f',
-    'webapp.json',
-    '-c',
-    'skiff-prod'
+    'webapp.json'
   ]
   dir: '.skiff'
 substitutions:
