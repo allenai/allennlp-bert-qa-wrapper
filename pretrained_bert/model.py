@@ -239,12 +239,12 @@ class BertForQuestionAnswering(Model):
             assert len(nbest) >= 1
 
             total_scores = []
-            best_non_null_entry = None
+            best_valid_entry = None
             for entry in nbest:
                 total_scores.append(entry.start_logit + entry.end_logit)
-                if not best_non_null_entry:
+                if not best_valid_entry:
                     if entry.text:
-                        best_non_null_entry = entry
+                        best_valid_entry = entry
 
             probs = self._compute_softmax(total_scores)
 
@@ -262,13 +262,16 @@ class BertForQuestionAnswering(Model):
             if self._model_is_for_squad1:
                 predictions.append(nbest_json[0]["text"])
             else:
-                # predict "" iff the null score - the score of best non-null > threshold
-                score_diff = score_null - best_non_null_entry.start_logit - (
-                        best_non_null_entry.end_logit)
-                if score_diff > self._null_score_difference_threshold:
+                if best_valid_entry is None:
                     predictions.append("!!NO ANSWER!!")
                 else:
-                    predictions.append(best_non_null_entry.text)
+                    # predict "" iff the null score - the score of best non-null > threshold
+                    score_diff = score_null - best_valid_entry.start_logit - (
+                            best_valid_entry.end_logit)
+                    if score_diff > self._null_score_difference_threshold:
+                        predictions.append("!!NO ANSWER!!")
+                    else:
+                        predictions.append(best_valid_entry.text)
 
             nbest_info.append(nbest_json)
         output_dict["predictions"] = predictions
