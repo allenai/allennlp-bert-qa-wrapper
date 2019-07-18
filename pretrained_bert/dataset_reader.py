@@ -124,71 +124,73 @@ class SquadReaderForPretrainedBert(DatasetReader):
         # The -3 accounts for [CLS], [SEP] and [SEP]
         max_tokens_for_doc = self._max_sequence_length - len(query_tokens) - 3
 
-        # We can have documents that are longer than the maximum sequence length.
-        # To deal with this we do a sliding window approach, where we take chunks
-        # of the up to our max length with a stride of `doc_stride`.
+        # Different from original pytorch-pretrained-bert,
+        # we don't use a sliding window approach here.
+        # We just truncate the original doc to defined max_sequence_length.
         _DocSpan = collections.namedtuple(  # pylint: disable=invalid-name
-                "DocSpan", ["start", "length"])
+            "DocSpan", ["start", "length"])
         doc_spans = []
         start_offset = 0
-        while start_offset < len(all_doc_tokens):
+        if start_offset < len(all_doc_tokens):
             length = len(all_doc_tokens) - start_offset
             if length > max_tokens_for_doc:
                 length = max_tokens_for_doc
             doc_spans.append(_DocSpan(start=start_offset, length=length))
-            if start_offset + length == len(all_doc_tokens):
-                break
-            start_offset += min(length, self._document_stride)
 
-        for (doc_span_index, doc_span) in enumerate(doc_spans):
-            tokens = []
-            token_to_orig_map = {}
-            token_is_max_context = {}
-            segment_ids = []
-            tokens.append("[CLS]")
+        # We only select the first index of doc_spans here.
+        doc_span_index = 0
+        doc_span = doc_spans[0]
+
+        tokens = []
+        token_to_orig_map = {}
+        token_is_max_context = {}
+        segment_ids = []
+        tokens.append("[CLS]")
+        segment_ids.append(0)
+        for token in query_tokens:
+            tokens.append(token)
             segment_ids.append(0)
-            for token in query_tokens:
-                tokens.append(token)
-                segment_ids.append(0)
-            tokens.append("[SEP]")
-            segment_ids.append(0)
+        tokens.append("[SEP]")
+        segment_ids.append(0)
 
-            for i in range(doc_span.length):
-                split_token_index = doc_span.start + i
-                token_to_orig_map[len(tokens)] = tok_to_orig_index[split_token_index]
+        for i in range(doc_span.length):
+            split_token_index = doc_span.start + i
+            token_to_orig_map[len(tokens)] = tok_to_orig_index[split_token_index]
 
-                is_max_context = self._check_is_max_context(doc_spans,
-                                                            doc_span_index,
-                                                            split_token_index)
-                token_is_max_context[len(tokens)] = is_max_context
-                tokens.append(all_doc_tokens[split_token_index])
-                segment_ids.append(1)
-            tokens.append("[SEP]")
+            is_max_context = self._check_is_max_context(doc_spans,
+                                                        doc_span_index,
+                                                        split_token_index)
+            token_is_max_context[len(tokens)] = is_max_context
+            tokens.append(all_doc_tokens[split_token_index])
             segment_ids.append(1)
+        tokens.append("[SEP]")
+        segment_ids.append(1)
 
-            input_ids = self._tokenizer.convert_tokens_to_ids(tokens)
+        input_ids = self._tokenizer.convert_tokens_to_ids(tokens)
 
-            # The mask has 1 for real tokens and 0 for padding tokens. Only real
-            # tokens are attended to.
-            input_mask = [1] * len(input_ids)
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [1] * len(input_ids)
 
-            # Zero-pad up to the sequence length.
-            while len(input_ids) < self._max_sequence_length:
-                input_ids.append(0)
-                input_mask.append(0)
-                segment_ids.append(0)
+        # Zero-pad up to the sequence length.
+        while len(input_ids) < self._max_sequence_length:
+            input_ids.append(0)
+            input_mask.append(0)
+            segment_ids.append(0)
 
-            assert len(input_ids) == self._max_sequence_length
-            assert len(input_mask) == self._max_sequence_length
-            assert len(segment_ids) == self._max_sequence_length
-            input_ids_tensor = torch.tensor(input_ids, dtype=torch.long)
-            input_mask_tensor = torch.tensor(input_mask, dtype=torch.long)
-            segment_ids_tensor = torch.tensor(segment_ids, dtype=torch.long)
-            instance = Instance({"input_ids": MetadataField(input_ids_tensor),
-                                 "token_type_ids": MetadataField(segment_ids_tensor),
-                                 "attention_mask": MetadataField(input_mask_tensor),
-                                 "tokens": MetadataField(tokens),
-                                 "document_tokens": MetadataField(doc_tokens),
-                                 "token_to_original_map": MetadataField(token_to_orig_map),
-                                 "token_is_max_context": MetadataField(token_is_max_context)})
-            return instance
+        assert len(input_ids) == self._max_sequence_length
+        assert len(input_mask) == self._max_sequence_length
+        assert len(segment_ids) == self._max_sequence_length
+        input_ids_tensor = torch.tensor(input_ids, dtype=torch.long)
+        input_mask_tensor = torch.tensor(input_mask, dtype=torch.long)
+        segment_ids_tensor = torch.tensor(segment_ids, dtype=torch.long)
+        instance = Instance({"input_ids": MetadataField(input_ids_tensor),
+                             "token_type_ids": MetadataField(segment_ids_tensor),
+                             "attention_mask": MetadataField(input_mask_tensor),
+                             "tokens": MetadataField(tokens),
+                             "document_tokens": MetadataField(doc_tokens),
+                             "token_to_original_map": MetadataField(token_to_orig_map),
+                             "token_is_max_context": MetadataField(token_is_max_context)})
+        # We truncate the original doc to defined max_sequence_length.
+        # Here we only process the first part of doc_spans and return the result.
+        return instance
