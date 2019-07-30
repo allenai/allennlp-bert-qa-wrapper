@@ -2,5 +2,6 @@
     "appName": "allennlp-bert-qa-wrapper",
     "subdomain": "allennlp-bert-qa",
     "httpPort": 8000,
-    "contact": "pradeepd"
+    "contact": "pradeepd",
+    "team": "allennlp"
 }
